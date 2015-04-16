@@ -28,7 +28,4 @@ public class NeuralNetFeatureVectorGenerator extends StateToImageConverter imple
         return dOut;
     }
 
-    public float[] generateFloatFeatureVectorFrom(State s) {
-        return net.forwardTo(getStateImage(s), layerName);
-    }
 }

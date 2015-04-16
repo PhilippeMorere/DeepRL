@@ -24,7 +24,7 @@ public class StateToImageConverter {
         this.imageType = imageType;
     }
 
-    protected BufferedImage getStateImage(State s) {
+    public BufferedImage getStateImage(State s) {
         BufferedImage image = new BufferedImage(width, height, imageType);
         renderLayer.updateState(s);
         renderLayer.render((Graphics2D) image.getGraphics(), width, height);
