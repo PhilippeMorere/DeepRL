@@ -26,7 +26,7 @@ import java.util.List;
 /**
  * Created by philippe on 19/02/15.
  */
-public class NNML extends OOMDPPlanner implements LearningAgent, QComputablePlanner {
+public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QComputablePlanner {
 
     /**
      * The model of the world that is being learned.
@@ -56,40 +56,25 @@ public class NNML extends OOMDPPlanner implements LearningAgent, QComputablePlan
      */
     protected int numEpisodesToStore = 1;
 
-    public NNML(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
-                double maxVIDelta, int maxVIPasses, State initState, List<PropositionalFunction> pfs, double rmax) {
+
+    /**
+     * The feature state generator that converts classic State objects to FeatureState objects. Feature objects
+     * include a feature array as well.
+     */
+    FeatureStateGenerator fsg;
+
+    public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
+                            State initState, double rmax) {
         this.plannerInit(domain, rf, tf, gamma, hashingFactory);
-        this.model = new NNMLModel(domain, initState, pfs, rmax);
+        this.model = new DeepNNModel(domain, initState, "something.deploy", "something.caffemodel", 0.1f, rmax);
 
         ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, this.model, true);
         this.modeledDomain = mdg.generateDomain();
 
-        //this.modelPlanner = new VIModelPlanner(modeledDomain, model.getModelRF(), model.getModelTF(), gamma, hashingFactory, maxVIDelta, maxVIPasses);
-        //this.planner = new BoundedRTDP(modeledDomain, model.getModelRF(), model.getModelTF(), gamma, hashingFactory,
-        //        new ValueFunctionInitialization.ConstantValueFunctionInitialization(-10.0), new ValueFunctionInitialization.ConstantValueFunctionInitialization(0.0), 0.1, 30);
-
         this.planner = new NNMLPlanner(mdg.generateDomain(), this.model.getModelRF(), this.model.getModelTF(), gamma, hashingFactory, rmax);
-
-        //this.policy = new BoltzmannQPolicy(this, 0.1);
         this.policy = new GreedyQPolicy(this);
-    }
 
-    public void printModelRules() {
-        ((NNMLModel) model).displayFailureConditions();
-        ((NNMLModel) model).displayTermNames();
-        ((NNMLModel) model).displayPredictions();
-    }
-
-
-    public void saveModelRules(String path) {
-        ((NNMLModel) model).saveModelRules(path);
-    }
-
-
-    public void loadModelRules(Domain domain, String filePath) {
-        ((NNMLModel) model).loadModelRules(domain, filePath);
-        System.out.println("Loaded rules:");
-        printModelRules();
+        this.fsg = new FeatureStateGenerator(new MockStateToFeatureVectorGenerator());
     }
 
     /**
@@ -117,19 +102,13 @@ public class NNML extends OOMDPPlanner implements LearningAgent, QComputablePlan
     }
 
     public EpisodeAnalysis runLearningEpisodeFrom(State initialState, int maxSteps) {
-        //this.modelPlanner.initializePlannerIn(initialState);
-        //this.planner.planFromState(initialState);
-
         EpisodeAnalysis ea = new EpisodeAnalysis(initialState);
 
-        //DomainMappedPolicy policy = new DomainMappedPolicy(domain, this.modelPlanner.modelPlannedPolicy());
-        //Policy policy = this.createDomainMappedPolicy();
-
-        State curState = initialState;
+        State curState = fsg.fromState(initialState);
         int steps = 0;
         while (!this.tf.isTerminal(curState) && steps < maxSteps) {
             GroundedAction ga = (GroundedAction) policy.getAction(curState);
-            State nextState = ga.executeIn(curState);
+            State nextState = fsg.fromState(ga.executeIn(curState));
             double r = this.rf.reward(curState, ga, nextState);
 
             ea.recordTransitionTo(ga, nextState, r);
