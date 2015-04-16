@@ -13,17 +13,13 @@ import burlap.domain.singleagent.gridworld.GridWorldStateParser;
 import burlap.domain.singleagent.gridworld.GridWorldVisualizer;
 import burlap.oomdp.auxiliary.StateParser;
 import burlap.oomdp.core.Domain;
-import burlap.oomdp.core.PropositionalFunction;
 import burlap.oomdp.core.State;
 import burlap.oomdp.core.TerminalFunction;
 import burlap.oomdp.singleagent.RewardFunction;
 import burlap.oomdp.singleagent.common.SinglePFTF;
 import burlap.oomdp.singleagent.common.UniformCostRF;
 import burlap.oomdp.visualizer.Visualizer;
-import edu.h2r.learning.modelbased.NNML;
-
-import java.util.ArrayList;
-import java.util.List;
+import edu.h2r.learning.modelbased.DeepModelLearner;
 
 public class TestingNNModelLearning {
     GridWorldDomain gwdg;
@@ -34,7 +30,6 @@ public class TestingNNModelLearning {
     StateConditionTest goalCondition;
     State initialState;
     DiscreteStateHashFactory hashingFactory;
-    List<PropositionalFunction> pfs;
 
     public TestingNNModelLearning() {
     }
@@ -77,10 +72,6 @@ public class TestingNNModelLearning {
         hashingFactory = new DiscreteStateHashFactory();
         hashingFactory.setAttributesForClass(GridWorldDomain.CLASSAGENT,
                 domain.getObjectClass(GridWorldDomain.CLASSAGENT).attributeList);
-
-        //set up the pfs
-        pfs = new ArrayList<PropositionalFunction>();
-        pfs.addAll(domain.getPropFunctions());
     }
 
     public void DoormaxExample(String outputPath) {
@@ -88,7 +79,7 @@ public class TestingNNModelLearning {
             outputPath = outputPath + "/";
         }
         //discount= 0.99; initialQ=0.0; learning rate=0.5; lambda=1.0
-        LearningAgent agent = new NNML(domain, rf, tf, 0.99, hashingFactory, 1, 30, initialState, pfs, 0);
+        LearningAgent agent = new DeepModelLearner(domain, rf, tf, 0.99, hashingFactory, initialState, 0);
         //((Doormax) agent).loadModelRules(domain, "doormax/");
 
         //run learning for 1000 episodes
