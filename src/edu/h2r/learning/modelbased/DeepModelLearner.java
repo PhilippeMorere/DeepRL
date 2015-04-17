@@ -5,17 +5,17 @@ import burlap.behavior.singleagent.Policy;
 import burlap.behavior.singleagent.QValue;
 import burlap.behavior.singleagent.ValueFunctionInitialization;
 import burlap.behavior.singleagent.learning.LearningAgent;
-import burlap.behavior.singleagent.learning.modellearning.DomainMappedPolicy;
 import burlap.behavior.singleagent.learning.modellearning.Model;
-import burlap.behavior.singleagent.learning.modellearning.ModelPlanner;
 import burlap.behavior.singleagent.learning.modellearning.ModeledDomainGenerator;
-import burlap.behavior.singleagent.learning.modellearning.rmax.UnmodeledFavoredPolicy;
 import burlap.behavior.singleagent.planning.OOMDPPlanner;
 import burlap.behavior.singleagent.planning.QComputablePlanner;
 import burlap.behavior.singleagent.planning.ValueFunctionPlanner;
 import burlap.behavior.singleagent.planning.commonpolicies.GreedyQPolicy;
 import burlap.behavior.statehashing.StateHashFactory;
-import burlap.oomdp.core.*;
+import burlap.oomdp.core.AbstractGroundedAction;
+import burlap.oomdp.core.Domain;
+import burlap.oomdp.core.State;
+import burlap.oomdp.core.TerminalFunction;
 import burlap.oomdp.singleagent.Action;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.RewardFunction;
@@ -29,25 +29,29 @@ import java.util.List;
 public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QComputablePlanner {
 
     /**
-     * The model of the world that is being learned.
+     * The model of the world that is being learned. The model learns the transition function,
+     * reward function and termination function.
      */
     protected Model model;
 
     /**
-     * The modeled domain object containing the modeled actions that a planner will use.
+     * The modeled domain object, built from the learnt model. It is used by the planner to compute the action to take
+     * in a specific state.
      */
     protected Domain modeledDomain;
 
     /**
-     * The model-adaptive planning algorithm to use
+     * The planning algorithm to use.
      */
-    protected ModelPlanner modelPlanner;
     protected ValueFunctionPlanner planner;
 
+    /**
+     * The policy to use with the planner.
+     */
     protected Policy policy;
 
     /**
-     * the saved previous learning episodes
+     * The saved previous learning episodes.
      */
     protected LinkedList<EpisodeAnalysis> episodeHistory = new LinkedList<EpisodeAnalysis>();
 
@@ -56,12 +60,12 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
      */
     protected int numEpisodesToStore = 1;
 
-
     /**
      * The feature state generator that converts classic State objects to FeatureState objects. Feature objects
-     * include a feature array as well.
+     * include a feature array as well, which is used by the underlying neural net.
      */
-    FeatureStateGenerator fsg;
+    protected FeatureStateGenerator fsg;
+
 
     public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
                             State initState, double rmax) {
@@ -88,7 +92,8 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
 
 
     /**
-     * Returns the model domain for planning. This model domain may differ from the real domain in the actions it uses for planning.
+     * Returns the model domain for planning. This model domain may differ from the real domain in the actions
+     * it uses for planning.
      *
      * @return the model domain for planning
      */
@@ -96,11 +101,25 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         return modeledDomain;
     }
 
-
+    /**
+     * Runs one learning episode from the specified initial state. The learning episode stops when a terminal state is
+     * reached.
+     *
+     * @param initialState the state to run the learning episode from.
+     * @return an {@link burlap.behavior.singleagent.EpisodeAnalysis} which contains all steps from the learning episode.
+     */
     public EpisodeAnalysis runLearningEpisodeFrom(State initialState) {
         return this.runLearningEpisodeFrom(initialState, -1);
     }
 
+    /**
+     * Runs one learning episode from the specified initial state. The learning episode stops when a terminal state is
+     * reached or the number of steps taken by the agent reaches maxSteps.
+     *
+     * @param initialState the state to run the learning episode from.
+     * @param maxSteps the maximum number of step before the learning episode stops.
+     * @return an {@link burlap.behavior.singleagent.EpisodeAnalysis} which contains all steps from the learning episode.
+     */
     public EpisodeAnalysis runLearningEpisodeFrom(State initialState, int maxSteps) {
         EpisodeAnalysis ea = new EpisodeAnalysis(initialState);
 
@@ -123,22 +142,24 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
             episodeHistory.poll();
         }
         episodeHistory.offer(ea);
-
-
         return ea;
     }
 
-    protected Policy createDomainMappedPolicy() {
-        return new DomainMappedPolicy(domain, new UnmodeledFavoredPolicy(
-                this.modelPlanner.modelPlannedPolicy(),
-                this.model,
-                this.modeledDomain.getActions()));
-    }
-
+    /**
+     * Returns the {@link burlap.behavior.singleagent.EpisodeAnalysis} from the last training episode.
+     *
+     * @return a {@link burlap.behavior.singleagent.EpisodeAnalysis}
+     */
     public EpisodeAnalysis getLastLearningEpisode() {
         return episodeHistory.getLast();
     }
 
+
+    /**
+     * Returns the {@link burlap.behavior.singleagent.EpisodeAnalysis} from the last training episode.
+     *
+     * @return a {@link burlap.behavior.singleagent.EpisodeAnalysis}
+     */
     public void setNumEpisodesToStore(int numEps) {
         if (numEps > 0) {
             numEpisodesToStore = numEps;
@@ -147,6 +168,11 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         }
     }
 
+    /**
+     * Returns a {@link List} of {@link burlap.behavior.singleagent.EpisodeAnalysis} from all recorded training episodes.
+     *
+     * @return a {@link List} of {@link burlap.behavior.singleagent.EpisodeAnalysis}
+     */
     public List<EpisodeAnalysis> getAllStoredLearningEpisodes() {
         return episodeHistory;
     }
@@ -160,11 +186,11 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
     @Override
     public void resetPlannerResults() {
         this.model.resetModel();
-        this.modelPlanner.resetPlanner();
         this.planner.resetPlannerResults();
         this.episodeHistory.clear();
     }
 
+    @Override
     public List<QValue> getQs(State s) {
         List<QValue> qs = this.planner.getQs(s);
         for (QValue q : qs) {
@@ -183,6 +209,7 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         return qs;
     }
 
+    @Override
     public QValue getQ(State s, AbstractGroundedAction a) {
 
         QValue q = this.planner.getQ(s, a);
