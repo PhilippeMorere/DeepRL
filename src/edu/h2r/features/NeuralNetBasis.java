@@ -6,7 +6,7 @@ import burlap.behavior.singleagent.vfa.StateFeature;
 import burlap.oomdp.core.State;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.visualizer.Visualizer;
-import edu.h2r.JNet;
+import edu.h2r.jNet;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -19,19 +19,19 @@ import java.util.Map;
  */
 public class NeuralNetBasis implements FeatureDatabase {
 
-    public final JNet net;
+    public final jNet net;
     protected final int nNodes;
-    private Map<String, Integer> actionFeatureMultiplier;
-    private Integer nextActionMultiplier;
     protected final String layerName;
     private final StateToImageConverter imageConverter;
+    private Map<String, Integer> actionFeatureMultiplier;
+    private Integer nextActionMultiplier;
 
     public NeuralNetBasis(String modelFileName, String pretrainedFileName, String layerName, Visualizer visualizer) {
         this(modelFileName, pretrainedFileName, layerName, visualizer, BufferedImage.TYPE_BYTE_GRAY);
     }
 
     public NeuralNetBasis(String modelFileName, String pretrainedFileName, String layerName, Visualizer visualizer, int imageType) {
-        net = new JNet(modelFileName,pretrainedFileName, 1.0f / 255.0f);
+        net = new jNet(modelFileName, pretrainedFileName, 1.0f / 255.0f);
         this.layerName = layerName;
 
         imageConverter = new StateToImageConverter(visualizer, net.getInputWidth(), net.getInputHeight(), imageType);
@@ -65,12 +65,12 @@ public class NeuralNetBasis implements FeatureDatabase {
 
         Iterable<StateFeature> sfs = this.getStateFeatures(s);
 
-        for(GroundedAction ga : actions){
+        for (GroundedAction ga : actions) {
             int actionMult = this.getActionMultiplier(ga);
-            int indexOffset = actionMult*this.nNodes;
+            int indexOffset = actionMult * this.nNodes;
 
             ActionFeaturesQuery afq = new ActionFeaturesQuery(ga);
-            for(StateFeature sf : sfs){
+            for (StateFeature sf : sfs) {
                 afq.addFeature(new StateFeature(sf.id + indexOffset, sf.value));
             }
 
@@ -88,7 +88,7 @@ public class NeuralNetBasis implements FeatureDatabase {
 
     @Override
     public int numberOfFeatures() {
-        if(this.actionFeatureMultiplier.size() == 0){
+        if (this.actionFeatureMultiplier.size() == 0) {
             return this.nNodes;
         }
         return this.nNodes * this.nextActionMultiplier;
@@ -98,17 +98,18 @@ public class NeuralNetBasis implements FeatureDatabase {
      * This method returns the action multiplier for the specified grounded action.
      * If the action is not stored, a new action multiplier will created, stored, and returned.
      * If the action is parameterized a runtime exception is thrown.
+     *
      * @param ga the grounded action for which the multiplier will be returned
      * @return the action multiplier to be applied to a state feature id.
      */
-    protected int getActionMultiplier(GroundedAction ga){
+    protected int getActionMultiplier(GroundedAction ga) {
 
-        if(ga.isParameterized() && ga.action.parametersAreObjects()){
+        if (ga.isParameterized() && ga.action.parametersAreObjects()) {
             throw new RuntimeException("Fourier Basis Feature Database does not support actions with OO-MDP object parameterizations.");
         }
 
         Integer stored = this.actionFeatureMultiplier.get(ga.toString());
-        if(stored == null){
+        if (stored == null) {
             this.actionFeatureMultiplier.put(ga.actionName(), this.nextActionMultiplier);
             stored = this.nextActionMultiplier;
             this.nextActionMultiplier++;
