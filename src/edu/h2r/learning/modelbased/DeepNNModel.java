@@ -1,17 +1,19 @@
 package edu.h2r.learning.modelbased;
 
 import burlap.behavior.singleagent.learning.modellearning.Model;
-import burlap.behavior.singleagent.vfa.StateToFeatureVectorGenerator;
 import burlap.behavior.statehashing.DiscreteStateHashFactory;
 import burlap.behavior.statehashing.StateHashTuple;
 import burlap.oomdp.core.*;
 import burlap.oomdp.singleagent.Action;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.RewardFunction;
-import edu.h2r.JNet;
+import edu.h2r.jSolver;
 import edu.h2r.learning.modelbased.FeatureStateGenerator.FeatureState;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Created by philippe on 18/02/15.
@@ -43,7 +45,7 @@ public class DeepNNModel extends Model {
     /**
      * The neural network used to model the transition function
      */
-    protected JNet netTF;
+    protected jSolver netTF;
 
     /**
      * Name of the last layer (or output layer) of the transition function neural network
@@ -56,7 +58,7 @@ public class DeepNNModel extends Model {
      * @param rmax
      */
 
-    public DeepNNModel(Domain sourceDomain, State initState, String modelFile, String pretrainedParamFile, float scalingFactor, double rmax) {
+    public DeepNNModel(Domain sourceDomain, State initState, String solverFile, String pretrainedParamFile, float scalingFactor, double rmax) {
         this.sourceDomain = sourceDomain;
         this.allActions = sourceDomain.getActions();
         this.rmax = rmax;
@@ -64,7 +66,7 @@ public class DeepNNModel extends Model {
         this.terminalStates = new HashSet<StateHashTuple>();
 
         // Init the net
-        netTF = new JNet(modelFile, pretrainedParamFile, scalingFactor);
+        netTF = new jSolver(solverFile);
 
         // Defining the terminal and the reward functions
         this.modeledTF = new TerminalFunction() {
@@ -83,6 +85,7 @@ public class DeepNNModel extends Model {
             }
         };
     }
+
     @Override
     public RewardFunction getModelRF() {
         return this.modeledRF;
@@ -125,11 +128,11 @@ public class DeepNNModel extends Model {
     public List<TransitionProbability> getTransitionProbabilities(State s, GroundedAction ga) {
         // Run a forward pass through the net to predict the next state
         float[] netInput = netInputFromStateAction(((FeatureState) s).features, ga);
-        float[] netOutput = netTF.forwardTo(netInput, outputTFLayerName);
+        float[] netOutput = netTF.getNet().forwardTo(netInput, outputTFLayerName);
 
         // Construct the new state from the old one and the new features
         FeatureState newState = (FeatureState) s.copy();
-        newState.features = netOutput; // TODO: do I need to deep copy this array??
+        newState.features = netOutput;
 
         // Return a list of transition probabilities containing only the predicted new state
         List<TransitionProbability> probs = new ArrayList<TransitionProbability>();
@@ -152,18 +155,18 @@ public class DeepNNModel extends Model {
 
     @Override
     public void updateModel(State s, GroundedAction ga, State sprime, double r, boolean sprimeIsTerminal) {
-        /*String sh = ((DoormaxStateHashFactory.BooleanStateHashTuple) hashingFactory.hashState(s)).hashCodeStr();
+        // If the state is terminal, add it to the terminal state list
+        if (sprimeIsTerminal && !modeledTF.isTerminal(s))
+            this.terminalStates.add(this.hashingFactory.hashState(s));
 
-        if (sprimeIsTerminal)
-            this.terminalStates.add(s);*/
+        // TODO: Keep all experiences in memory to train the net with more data: experienceReplay
 
-        //TODO: Add the state to the terminal states if it is.
-
-        //TODO: Train the net!
+        //TODO: give the data to the net
+        netTF.train();
     }
 
     @Override
     public void resetModel() {
-        // TODO: reset the NN ?
+        netTF.reset();
     }
 }
