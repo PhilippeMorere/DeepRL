@@ -8,6 +8,7 @@ import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.visualizer.Visualizer;
 import edu.h2r.JNet;
 
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,19 +17,24 @@ import java.util.Map;
 /**
  * Created by gabe on 4/16/15.
  */
-public class NeuralNetBasis extends StateToImageConverter implements FeatureDatabase {
+public class NeuralNetBasis implements FeatureDatabase {
 
     public final JNet net;
     protected final int nNodes;
     private Map<String, Integer> actionFeatureMultiplier;
     private Integer nextActionMultiplier;
     protected final String layerName;
+    private final StateToImageConverter imageConverter;
 
+    public NeuralNetBasis(String modelFileName, String pretrainedFileName, String layerName, Visualizer visualizer) {
+        this(modelFileName, pretrainedFileName, layerName, visualizer, BufferedImage.TYPE_BYTE_GRAY);
+    }
 
-    public NeuralNetBasis(String modelFileName, String pretrainedFileName, String layerName, Visualizer visualizer, int width, int height, int imageType) {
-        super(visualizer, width, height, imageType);
+    public NeuralNetBasis(String modelFileName, String pretrainedFileName, String layerName, Visualizer visualizer, int imageType) {
         net = new JNet(modelFileName,pretrainedFileName, 1.0f / 255.0f);
         this.layerName = layerName;
+
+        imageConverter = new StateToImageConverter(visualizer, net.getInputWidth(), net.getInputHeight(), imageType);
 
         actionFeatureMultiplier = new HashMap<>();
         nextActionMultiplier = 0;
@@ -42,7 +48,7 @@ public class NeuralNetBasis extends StateToImageConverter implements FeatureData
         List<StateFeature> out = new ArrayList<>();
         float[] encoding = null;
         try {
-            encoding = net.forwardTo(getStateImage(s), layerName);
+            encoding = net.forwardTo(imageConverter.getStateImage(s), layerName);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         }

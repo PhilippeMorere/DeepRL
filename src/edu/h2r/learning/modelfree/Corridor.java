@@ -113,7 +113,7 @@ public class Corridor {
 
             @Override
             public LearningAgent generateAgent() {
-                FeatureDatabase fd = new NeuralNetBasis(modelFileName, pretrainedFileName, layerName, visualizer, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_TYPE);
+                FeatureDatabase fd = new NeuralNetBasis(modelFileName, pretrainedFileName, layerName, visualizer);
                 return new GradientDescentSarsaLam(domain, rf, tf, 0.99, new LinearVFA(fd, 1.0), lr, 10000, 0.5);
             }
         };
@@ -121,7 +121,7 @@ public class Corridor {
 
     private static QComputablePlanner deepLearning(Domain domain, State initialState, Visualizer visualizer, RewardFunction rf, TerminalFunction tf, StateHashFactory hashFactory) {
 //        FeatureDatabase fd = new FourierBasis(new ConcatenatedObjectFeatureVectorGenerator(true, GridWorldDomain.CLASSAGENT), 4);
-        NeuralNetBasis fd = new NeuralNetBasis(MODEL_FILE, PRETRAINED_FILE, "encode1neuron", visualizer, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_TYPE);
+        NeuralNetBasis fd = new NeuralNetBasis(MODEL_FILE, PRETRAINED_FILE, "encode1neuron", visualizer);
 //        LearningRate lr = new SoftTimeInverseDecayLR(0.2, 10);
         GradientDescentSarsaLam agent = new GradientDescentSarsaLam(domain, rf, tf, 0.99, new LinearVFA(fd, 1.0), 0.02, 10000, 0.5);
 //        agent.setLearningRate(lr);

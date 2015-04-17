@@ -30,4 +30,5 @@ public class StateToImageConverter {
         renderLayer.render((Graphics2D) image.getGraphics(), width, height);
         return image;
     }
+
 }
