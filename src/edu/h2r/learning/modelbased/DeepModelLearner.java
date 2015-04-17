@@ -68,9 +68,9 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
 
 
     public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
-                            State initState, double rmax) {
+                            State initState, String modelFile, String pretrainedParamFile, float scalingFactor, double rmax) {
         this.plannerInit(domain, rf, tf, gamma, hashingFactory);
-        this.model = new DeepNNModel(domain, initState, "something.deploy", "something.caffemodel", 0.1f, rmax);
+        this.model = new DeepNNModel(domain, initState, modelFile, pretrainedParamFile, scalingFactor, rmax);
 
         ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, this.model, true);
         this.modeledDomain = mdg.generateDomain();
@@ -117,7 +117,7 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
      * reached or the number of steps taken by the agent reaches maxSteps.
      *
      * @param initialState the state to run the learning episode from.
-     * @param maxSteps the maximum number of step before the learning episode stops.
+     * @param maxSteps     the maximum number of step before the learning episode stops.
      * @return an {@link burlap.behavior.singleagent.EpisodeAnalysis} which contains all steps from the learning episode.
      */
     public EpisodeAnalysis runLearningEpisodeFrom(State initialState, int maxSteps) {
