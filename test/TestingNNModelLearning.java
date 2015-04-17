@@ -79,7 +79,8 @@ public class TestingNNModelLearning {
             outputPath = outputPath + "/";
         }
         //discount= 0.99; initialQ=0.0; learning rate=0.5; lambda=1.0
-        LearningAgent agent = new DeepModelLearner(domain, rf, tf, 0.99, hashingFactory, initialState, 0);
+        LearningAgent agent = new DeepModelLearner(domain, rf, tf, 0.99, hashingFactory, initialState,
+                "something.deploy", "something.caffemodel", 0.1f, 0);
         //((Doormax) agent).loadModelRules(domain, "doormax/");
 
         //run learning for 1000 episodes

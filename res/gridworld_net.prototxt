@@ -1,0 +1,42 @@
+layers {
+  name: "features"
+  type: DATA
+  data_param {
+    source: "TO BE DEFINED"
+    backend: TO_BE_DEFINED
+    batch_size: 64 (should be number_features + number_actions)
+    scale: 1
+  }
+  top: "data"
+  top: "label"
+}
+layers {
+  name: "ip1"
+  type: INNER_PRODUCT
+  bottom: "features"
+  top: "ip1"
+}
+layers {
+  name: "relu1"
+  type: RELU
+  bottom: "ip1"
+  top: "ip1"
+}
+layers {
+  name: "ip2"
+  type: INNER_PRODUCT
+  bottom: "ip1"
+  top: "ip2"
+}
+layers {
+  name: "relu2"
+  type: RELU
+  bottom: "ip2"
+  top: "ip2"
+}
+layers {
+  name: "loss"
+  type: SOFTMAX_LOSS
+  bottom: "ip2"
+  bottom: "label"
+}

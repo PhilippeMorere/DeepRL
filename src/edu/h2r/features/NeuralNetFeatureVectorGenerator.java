@@ -3,7 +3,7 @@ package edu.h2r.features;
 import burlap.behavior.singleagent.vfa.StateToFeatureVectorGenerator;
 import burlap.oomdp.core.State;
 import burlap.oomdp.visualizer.Visualizer;
-import edu.h2r.JNet;
+import edu.h2r.jNet;
 
 import java.awt.image.BufferedImage;
 
@@ -12,7 +12,7 @@ import java.awt.image.BufferedImage;
  */
 public class NeuralNetFeatureVectorGenerator implements StateToFeatureVectorGenerator {
 
-    private final JNet net;
+    private final jNet net;
     private final String layerName;
     private final StateToImageConverter imageConverter;
 
@@ -21,7 +21,7 @@ public class NeuralNetFeatureVectorGenerator implements StateToFeatureVectorGene
     }
 
     public NeuralNetFeatureVectorGenerator(String modelFileName, String pretrainedFileName, String layerName, Visualizer visualizer, int imageType) {
-        net = new JNet(modelFileName, pretrainedFileName, 1.0f / 255.0f);
+        net = new jNet(modelFileName, pretrainedFileName, 1.0f / 255.0f);
         this.layerName = layerName;
         imageConverter = new StateToImageConverter(visualizer, net.getInputWidth(), net.getInputWidth(), imageType);
     }
