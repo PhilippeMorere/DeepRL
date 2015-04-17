@@ -116,11 +116,5 @@ public class NeuralNetBasis implements FeatureDatabase {
 
         return stored;
     }
-
-//    private BufferedImage getStateImage(State s) {
-//        BufferedImage image = new BufferedImage(width, height, imageType);
-//        renderLayer.updateState(s);
-//        renderLayer.render((Graphics2D) image.getGraphics(), width, height);
-//        return image;
-//    }
+    
 }

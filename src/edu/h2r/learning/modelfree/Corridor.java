@@ -41,6 +41,7 @@ import burlap.oomdp.singleagent.RewardFunction;
 import burlap.oomdp.singleagent.SADomain;
 import burlap.oomdp.visualizer.Visualizer;
 import edu.h2r.features.NeuralNetBasis;
+import edu.h2r.jSolver;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -218,6 +219,8 @@ public class Corridor {
 //            }
 //
 //        }
+        jSolver solver = new jSolver("/home/gabe/deeprl-autoencoder/corridor/solver.prototxt");
+        solver.train();
 
         LearningAgentFactory fbLearningFactory = fourierBasisLearner(domain, rf, tf, hashFactory);
         LearningAgentFactory ae10 = neuralNetLearner("AE-10", PRETRAINED_FILE, MODEL_FILE, "encode1neuron", domain, rf, tf, visualizer, 0.002);
