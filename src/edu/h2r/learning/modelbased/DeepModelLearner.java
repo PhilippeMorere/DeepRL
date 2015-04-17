@@ -70,35 +70,16 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
     public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
                             State initState, String modelFile, String pretrainedParamFile, float scalingFactor, double rmax) {
         this.plannerInit(domain, rf, tf, gamma, hashingFactory);
-        this.model = new DeepNNModel(domain, initState, modelFile, pretrainedParamFile, scalingFactor, rmax);
+        this.fsg = new FeatureStateGenerator(new MockStateToFeatureVectorGenerator());
 
+        // Create the model and modeled domain
+        this.model = new DeepNNModel(domain, initState, modelFile, pretrainedParamFile, scalingFactor, rmax);
         ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, this.model, true);
         this.modeledDomain = mdg.generateDomain();
 
+        // Create the planer and the policy to use with it
         this.planner = new NNMLPlanner(mdg.generateDomain(), this.model.getModelRF(), this.model.getModelTF(), gamma, hashingFactory, rmax);
         this.policy = new GreedyQPolicy(this);
-
-        this.fsg = new FeatureStateGenerator(new MockStateToFeatureVectorGenerator());
-    }
-
-    /**
-     * Returns the model learning algorithm being used.
-     *
-     * @return the model learning algorithm being used.
-     */
-    public Model getModel() {
-        return model;
-    }
-
-
-    /**
-     * Returns the model domain for planning. This model domain may differ from the real domain in the actions
-     * it uses for planning.
-     *
-     * @return the model domain for planning
-     */
-    public Domain getModeledDomain() {
-        return modeledDomain;
     }
 
     /**
@@ -122,26 +103,34 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
      */
     public EpisodeAnalysis runLearningEpisodeFrom(State initialState, int maxSteps) {
         EpisodeAnalysis ea = new EpisodeAnalysis(initialState);
-
         State curState = fsg.fromState(initialState);
         int steps = 0;
-        while (!this.tf.isTerminal(curState) && steps < maxSteps) {
+
+        // Run episode until a terminal state is reached OR the agent took too many steps
+        while (!this.tf.isTerminal(curState) && (steps < maxSteps || maxSteps == -1)) {
+            // Let the policy determine the best action to take in the current state
             GroundedAction ga = (GroundedAction) policy.getAction(curState);
+
+            // Execute the action the policy determined, convert the state to a FeatureState
             State nextState = fsg.fromState(ga.executeIn(curState));
+
+            // Get the real reward from the reward function
             double r = this.rf.reward(curState, ga, nextState);
 
-            ea.recordTransitionTo(ga, nextState, r);
+            // Update the model and planner
             this.model.updateModel(curState, ga, nextState, r, this.tf.isTerminal(nextState));
             this.planner.performBellmanUpdateOn(curState);
-            curState = nextState;
 
+            curState = nextState;
+            ea.recordTransitionTo(ga, nextState, r);
             steps++;
         }
 
-        if (episodeHistory.size() >= numEpisodesToStore) {
+        // Add episodeAnalysis to history
+        if (episodeHistory.size() >= numEpisodesToStore)
             episodeHistory.poll();
-        }
         episodeHistory.offer(ea);
+
         return ea;
     }
 
@@ -156,16 +145,13 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
 
 
     /**
-     * Returns the {@link burlap.behavior.singleagent.EpisodeAnalysis} from the last training episode.
-     *
-     * @return a {@link burlap.behavior.singleagent.EpisodeAnalysis}
+     * Sets the maximum number of {@link burlap.behavior.singleagent.EpisodeAnalysis} to keep in memory.
      */
     public void setNumEpisodesToStore(int numEps) {
-        if (numEps > 0) {
+        if (numEps > 0)
             numEpisodesToStore = numEps;
-        } else {
+        else
             numEpisodesToStore = 1;
-        }
     }
 
     /**
@@ -195,16 +181,14 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         List<QValue> qs = this.planner.getQs(s);
         for (QValue q : qs) {
 
-            //if Q for unknown action, use value initialization of curent state
+            // If Q for unknown action, use value initialization of current state
             if (!this.model.transitionIsModeled(s, (GroundedAction) q.a)) {
                 q.q = this.planner.getValueFunctionInitialization().qValue(s, q.a);
             }
 
-            //update action to real world action
+            // Update action to real world action
             Action realWorldAction = this.domain.getAction(q.a.actionName());
-            GroundedAction nga = new GroundedAction(realWorldAction, q.a.params);
-            q.a = nga;
-
+            q.a = new GroundedAction(realWorldAction, q.a.params);
         }
         return qs;
     }
@@ -214,15 +198,14 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
 
         QValue q = this.planner.getQ(s, a);
 
-        //if Q for unknown action, use value initialization of curent state
+        // If Q for unknown action, use value initialization of current state
         if (!this.model.transitionIsModeled(s, (GroundedAction) q.a)) {
             q.q = this.planner.getValueFunctionInitialization().qValue(s, q.a);
         }
 
-        //update action to real world action
+        // Update action to real world action
         Action realWorldAction = this.domain.getAction(q.a.actionName());
-        GroundedAction nga = new GroundedAction(realWorldAction, q.a.params);
-        q.a = nga;
+        q.a = new GroundedAction(realWorldAction, q.a.params);
         return q;
     }
 
@@ -256,7 +239,7 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         public NNMLPlanner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory, ValueFunctionInitialization vInit) {
             VFPInit(domain, rf, tf, gamma, hashingFactory);
 
-            //don't cache transition dynamics because our leanred model keeps changing!
+            // Don't cache transition dynamics because our learned model keeps changing!
             this.useCachedTransitions = false;
 
             this.valueInitializer = vInit;
