@@ -30,5 +30,16 @@ public class FeatureStateGenerator extends State {
             for (int i = 0; i < features.length; i++)
                 this.features[i] = (float) features[i];
         }
+
+        public FeatureState(State s, float[] features) {
+            super(s);
+            this.features = new float[features.length];
+            for (int i = 0; i < features.length; i++)
+                this.features[i] = features[i];
+        }
+
+        public State copy(){
+            return new FeatureState(this, this.features);
+        }
     }
 }

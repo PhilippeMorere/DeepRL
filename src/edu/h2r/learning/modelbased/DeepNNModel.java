@@ -3,6 +3,7 @@ package edu.h2r.learning.modelbased;
 import burlap.behavior.singleagent.learning.modellearning.Model;
 import burlap.behavior.statehashing.DiscreteStateHashFactory;
 import burlap.behavior.statehashing.StateHashTuple;
+import burlap.domain.singleagent.gridworld.GridWorldDomain;
 import burlap.oomdp.core.*;
 import burlap.oomdp.singleagent.Action;
 import burlap.oomdp.singleagent.GroundedAction;
@@ -54,11 +55,11 @@ public class DeepNNModel extends Model {
 
     /**
      * @param sourceDomain
-     * @param initState
+     * @param solverFile
      * @param rmax
      */
 
-    public DeepNNModel(Domain sourceDomain, State initState, String solverFile, String pretrainedParamFile, float scalingFactor, double rmax) {
+    public DeepNNModel(Domain sourceDomain, String solverFile, double rmax) {
         this.sourceDomain = sourceDomain;
         this.allActions = sourceDomain.getActions();
         this.rmax = rmax;
@@ -67,6 +68,10 @@ public class DeepNNModel extends Model {
 
         // Init the net
         netTF = new jSolver(solverFile);
+        // TODO: initialize the following correctly
+        netTF.getNet().setMemoryDataLayer("data", new float[24]);
+        netTF.getNet().setMemoryDataLayer("label", new float[20]);
+        this.outputTFLayerName = "relu2";
 
         // Defining the terminal and the reward functions
         this.modeledTF = new TerminalFunction() {
@@ -84,6 +89,33 @@ public class DeepNNModel extends Model {
                 return DeepNNModel.this.rmax;
             }
         };
+    }
+
+    public static void main(String[] args) {
+        GridWorldDomain skbdg = new GridWorldDomain(11, 11);
+        skbdg.setMapToFourRooms();
+
+        Domain d = skbdg.generateDomain();
+        FeatureStateGenerator fsg = new FeatureStateGenerator(new MockGWStateToFeatureVectorGenerator(d));
+        State s = fsg.fromState(skbdg.getOneAgentOneLocationState(d));
+
+        DeepNNModel model = new DeepNNModel(d, "res/gridworld_solver.prototxt", 10);
+
+        // Try it out
+        List<Action> actions = d.getActions();
+        List<GroundedAction> gas = new ArrayList<GroundedAction>();
+        for (Action a : actions)
+            gas.add(new GroundedAction(a, new String[]{GridWorldDomain.CLASSAGENT}));
+
+
+        // North
+        for (int i = 0; i < 100; i++) {
+            System.out.println("Episode " + i);
+            GroundedAction ga = gas.get((int) (Math.random() * gas.size()));
+            State sp = fsg.fromState(ga.executeIn(s));
+            model.updateModel(s, ga, sp, -0.1, false);
+            s = sp;
+        }
     }
 
     @Override
@@ -127,7 +159,7 @@ public class DeepNNModel extends Model {
     @Override
     public List<TransitionProbability> getTransitionProbabilities(State s, GroundedAction ga) {
         // Run a forward pass through the net to predict the next state
-        float[] netInput = netInputFromStateAction(((FeatureState) s).features, ga);
+        float[] netInput = netInputFromStateAction(s, ga);
         float[] netOutput = netTF.getNet().forwardTo(netInput, outputTFLayerName);
 
         // Construct the new state from the old one and the new features
@@ -140,7 +172,8 @@ public class DeepNNModel extends Model {
         return probs;
     }
 
-    private float[] netInputFromStateAction(float[] stateFeatures, GroundedAction ga) {
+    private float[] netInputFromStateAction(State s, GroundedAction ga) {
+        float[] stateFeatures = ((FeatureState) s).features;
         float[] netInput = new float[stateFeatures.length + allActions.size()];
 
         // Copy the features into the new array
@@ -161,7 +194,11 @@ public class DeepNNModel extends Model {
 
         // TODO: Keep all experiences in memory to train the net with more data: experienceReplay
 
-        //TODO: give the data to the net
+        // Set the net's input data and label
+        netTF.getNet().setMemoryDataLayer("data", netInputFromStateAction(s, ga));
+        netTF.getNet().setMemoryDataLayer("label", ((FeatureState) sprime).features);
+
+        // Run forward & backward pass to train the net
         netTF.train();
     }
 

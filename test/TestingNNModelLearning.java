@@ -50,8 +50,7 @@ public class TestingNNModelLearning {
 
     public void testOnGridWorld() {
         //create the domain
-        gwdg = new GridWorldDomain(11, 11);
-        gwdg.setMapToFourRooms();
+        gwdg = new GridWorldDomain(new int[10][2]);
         domain = gwdg.generateDomain();
 
         //create the state parser
@@ -66,7 +65,7 @@ public class TestingNNModelLearning {
         //set up the initial state of the tasks
         initialState = gwdg.getOneAgentOneLocationState(domain);
         gwdg.setAgent(initialState, 0, 0);
-        gwdg.setLocation(initialState, 0, 10, 10);
+        gwdg.setLocation(initialState, 0, 9, 1);
 
         //set up the state hashing system
         hashingFactory = new DiscreteStateHashFactory();
@@ -80,12 +79,12 @@ public class TestingNNModelLearning {
         }
         //discount= 0.99; initialQ=0.0; learning rate=0.5; lambda=1.0
         LearningAgent agent = new DeepModelLearner(domain, rf, tf, 0.99, hashingFactory, initialState,
-                "something.deploy", "something.caffemodel", 0.1f, 0);
+                "res/gridworld_solver.prototxt", 0.1f, 0);
         //((Doormax) agent).loadModelRules(domain, "doormax/");
 
         //run learning for 1000 episodes
         int maxTimeSteps = 200;
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1; i++) {
             EpisodeAnalysis ea = agent.runLearningEpisodeFrom(initialState, maxTimeSteps);
             //if(ea.numTimeSteps() < maxTimeSteps)
             ea.writeToFile(String.format("%se%03d", outputPath, i), sp);

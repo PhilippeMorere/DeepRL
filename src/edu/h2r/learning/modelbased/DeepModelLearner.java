@@ -69,12 +69,12 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
 
 
     public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
-                            State initState, String modelFile, String pretrainedParamFile, float scalingFactor, double rmax) {
+                            State initState, String modelFile, float scalingFactor, double rmax) {
         this.plannerInit(domain, rf, tf, gamma, hashingFactory);
         this.fsg = new FeatureStateGenerator(new MockGWStateToFeatureVectorGenerator(domain));
 
         // Create the model and modeled domain
-        this.model = new DeepNNModel(domain, initState, modelFile, pretrainedParamFile, scalingFactor, rmax);
+        this.model = new DeepNNModel(domain, modelFile, rmax);
         ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, this.model, true);
         this.modeledDomain = mdg.generateDomain();
 
