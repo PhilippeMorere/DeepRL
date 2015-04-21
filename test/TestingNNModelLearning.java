@@ -35,17 +35,15 @@ public class TestingNNModelLearning {
     }
 
     public static void main(String[] args) {
-
         TestingNNModelLearning example = new TestingNNModelLearning();
         example.testOnGridWorld();
         String outputPath = "output/"; //directory to record results
 
         //we will call planning and learning algorithms here
-        example.DoormaxExample(outputPath);
+        example.DeepModelLearnerExample(outputPath);
 
         //run the visualizer
         example.visualizeGridWorld(outputPath);
-
     }
 
     public void testOnGridWorld() {
@@ -73,43 +71,28 @@ public class TestingNNModelLearning {
                 domain.getObjectClass(GridWorldDomain.CLASSAGENT).attributeList);
     }
 
-    public void DoormaxExample(String outputPath) {
+    public void DeepModelLearnerExample(String outputPath) {
         if (!outputPath.endsWith("/")) {
             outputPath = outputPath + "/";
         }
-        //discount= 0.99; initialQ=0.0; learning rate=0.5; lambda=1.0
         LearningAgent agent = new DeepModelLearner(domain, rf, tf, 0.99, hashingFactory, initialState,
                 "res/gridworld_solver.prototxt", 0.1f, 0);
-        //((Doormax) agent).loadModelRules(domain, "doormax/");
 
         //run learning for 1000 episodes
-        int maxTimeSteps = 200;
-        for (int i = 0; i < 1; i++) {
+        int maxTimeSteps = 100;
+        for (int i = 0; i < 100; i++) {
             EpisodeAnalysis ea = agent.runLearningEpisodeFrom(initialState, maxTimeSteps);
-            //if(ea.numTimeSteps() < maxTimeSteps)
+
             ea.writeToFile(String.format("%se%03d", outputPath, i), sp);
-            System.out.println(i + ": " + (ea.getReward(ea.numTimeSteps() - 1) > 0 ? "won " : "lost") + " in " +
+            System.out.println("Episode " + i + ": " + (ea.numTimeSteps() <= maxTimeSteps ? "won " : "lost") + " in " +
                     ea.numTimeSteps() + " steps.");
-            if ((ea.getReward(ea.numTimeSteps() - 1) > 0 && ea.numTimeSteps() < 30))
+            if (ea.numTimeSteps() < 12)
                 break;
         }
-
-        // Evaluate optimal policy with this model
-        //Model model = agent.getModel();
-        //ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, model, false);
-        //OOMDPPlanner planner = new ValueIteration(mdg.generateDomain(), model.getModelRF(), model.getModelTF(), 0.99, hashingFactory, 0.001, 10);
-        //planner.planFromState(initialState);
-
-        //create a Q-greedy policy from the planner
-        //Policy p = new GreedyQPolicy((QComputablePlanner) planner);
-
-        //record the plan results to a file
-        //p.evaluateBehavior(initialState, rf, tf, maxTimeSteps).writeToFile(outputPath + "planResult", sp);
-        System.out.println("Done");
     }
 
     public void visualizeGridWorld(String outputPath) {
         Visualizer v = GridWorldVisualizer.getVisualizer(gwdg.getMap());
-        EpisodeSequenceVisualizer evis = new EpisodeSequenceVisualizer(v, domain, sp, outputPath);
+        new EpisodeSequenceVisualizer(v, domain, sp, outputPath);
     }
 }
