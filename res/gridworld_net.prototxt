@@ -74,7 +74,7 @@ layer {
   }
 }
 layer {
-  name: "relu2"
+  name: "output"
   type: "ReLU"
   bottom: "ip2"
   top: "ip2"

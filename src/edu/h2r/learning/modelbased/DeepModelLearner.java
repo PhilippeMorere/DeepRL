@@ -74,7 +74,7 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         this.fsg = new FeatureStateGenerator(new MockGWStateToFeatureVectorGenerator(domain));
 
         // Create the model and modeled domain
-        this.model = new DeepNNModel(domain, modelFile, rmax);
+        this.model = new DeepNNModel(domain, modelFile, this.fsg.fromState(initState).features.length, rmax);
         ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, this.model, true);
         this.modeledDomain = mdg.generateDomain();
 

@@ -49,9 +49,11 @@ public class DeepNNModel extends Model {
     protected jSolver netTF;
 
     /**
-     * Name of the last layer (or output layer) of the transition function neural network
+     * Names of the output/data/label layers of the transition function neural network
      */
-    private String outputTFLayerName;
+    private static final String outputTFLayerName = "output";
+    private static final String dataTFLayerName = "data";
+    private static final String labelTFLayerName = "label";
 
     /**
      * @param sourceDomain
@@ -59,19 +61,20 @@ public class DeepNNModel extends Model {
      * @param rmax
      */
 
-    public DeepNNModel(Domain sourceDomain, String solverFile, double rmax) {
+    public DeepNNModel(Domain sourceDomain, String solverFile, int featureNumber, double rmax) {
         this.sourceDomain = sourceDomain;
         this.allActions = sourceDomain.getActions();
         this.rmax = rmax;
         this.hashingFactory = new DiscreteStateHashFactory();
         this.terminalStates = new HashSet<StateHashTuple>();
 
+        // Edit the net file
+        // TODO: Modify the net file so that the net size is <featureNumber>
+
         // Init the net
         netTF = new jSolver(solverFile);
-        // TODO: initialize the following correctly
-        netTF.getNet().setMemoryDataLayer("data", new float[24]);
-        netTF.getNet().setMemoryDataLayer("label", new float[20]);
-        this.outputTFLayerName = "relu2";
+        netTF.getNet().setMemoryDataLayer(dataTFLayerName, new float[featureNumber + allActions.size()]);
+        netTF.getNet().setMemoryDataLayer(labelTFLayerName, new float[featureNumber]);
 
         // Defining the terminal and the reward functions
         this.modeledTF = new TerminalFunction() {
@@ -99,7 +102,7 @@ public class DeepNNModel extends Model {
         FeatureStateGenerator fsg = new FeatureStateGenerator(new MockGWStateToFeatureVectorGenerator(d));
         State s = fsg.fromState(skbdg.getOneAgentOneLocationState(d));
 
-        DeepNNModel model = new DeepNNModel(d, "res/gridworld_solver.prototxt", 10);
+        DeepNNModel model = new DeepNNModel(d, "res/gridworld_solver.prototxt", 20, 10);
 
         // Try it out
         List<Action> actions = d.getActions();
