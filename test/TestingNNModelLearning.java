@@ -80,7 +80,7 @@ public class TestingNNModelLearning {
 
         //run learning for 1000 episodes
         int maxTimeSteps = 100;
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 20; i++) {
             EpisodeAnalysis ea = agent.runLearningEpisodeFrom(initialState, maxTimeSteps);
 
             ea.writeToFile(String.format("%se%03d", outputPath, i), sp);
