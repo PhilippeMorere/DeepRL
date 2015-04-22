@@ -19,8 +19,10 @@ public class MockGWStateToFeatureVectorGenerator implements StateToFeatureVector
         this.domain = domain;
         x = domain.getAttribute(GridWorldDomain.ATTX);
         y = domain.getAttribute(GridWorldDomain.ATTY);
-        height = (int) (y.upperLim - y.lowerLim);
-        width = (int) (x.upperLim - x.lowerLim);
+        height = (int) (y.upperLim - y.lowerLim) + 1;
+        width = (int) (x.upperLim - x.lowerLim) + 1;
+        System.out.println(width);
+        System.out.println(height);
     }
 
     @Override

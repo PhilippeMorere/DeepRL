@@ -3,6 +3,8 @@ package edu.h2r.learning.modelbased;
 import burlap.behavior.singleagent.vfa.StateToFeatureVectorGenerator;
 import burlap.oomdp.core.State;
 
+import java.util.Arrays;
+
 /**
  * Created by philippe on 16/04/15.
  */
@@ -38,8 +40,25 @@ public class FeatureStateGenerator extends State {
                 this.features[i] = features[i];
         }
 
-        public State copy(){
+        public State copy() {
             return new FeatureState(this, this.features);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            if (!super.equals(o)) return false;
+
+            FeatureState that = (FeatureState) o;
+
+            return Arrays.equals(features, that.features);
+
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(features);
         }
     }
 }

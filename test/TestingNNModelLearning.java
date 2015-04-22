@@ -8,6 +8,7 @@ import burlap.behavior.singleagent.learning.LearningAgent;
 import burlap.behavior.singleagent.planning.StateConditionTest;
 import burlap.behavior.singleagent.planning.deterministic.TFGoalCondition;
 import burlap.behavior.statehashing.DiscreteStateHashFactory;
+import burlap.behavior.statehashing.StateHashFactory;
 import burlap.domain.singleagent.gridworld.GridWorldDomain;
 import burlap.domain.singleagent.gridworld.GridWorldStateParser;
 import burlap.domain.singleagent.gridworld.GridWorldVisualizer;
@@ -20,6 +21,7 @@ import burlap.oomdp.singleagent.common.SinglePFTF;
 import burlap.oomdp.singleagent.common.UniformCostRF;
 import burlap.oomdp.visualizer.Visualizer;
 import edu.h2r.learning.modelbased.DeepModelLearner;
+import edu.h2r.learning.modelbased.FeatureStateHashFactory;
 
 public class TestingNNModelLearning {
     GridWorldDomain gwdg;
@@ -29,7 +31,7 @@ public class TestingNNModelLearning {
     TerminalFunction tf;
     StateConditionTest goalCondition;
     State initialState;
-    DiscreteStateHashFactory hashingFactory;
+    StateHashFactory hashingFactory;
 
     public TestingNNModelLearning() {
     }
@@ -66,9 +68,7 @@ public class TestingNNModelLearning {
         gwdg.setLocation(initialState, 0, 9, 1);
 
         //set up the state hashing system
-        hashingFactory = new DiscreteStateHashFactory();
-        hashingFactory.setAttributesForClass(GridWorldDomain.CLASSAGENT,
-                domain.getObjectClass(GridWorldDomain.CLASSAGENT).attributeList);
+        hashingFactory = new FeatureStateHashFactory();
     }
 
     public void DeepModelLearnerExample(String outputPath) {
@@ -76,11 +76,11 @@ public class TestingNNModelLearning {
             outputPath = outputPath + "/";
         }
         LearningAgent agent = new DeepModelLearner(domain, rf, tf, 0.99, hashingFactory, initialState,
-                "res/gridworld_solver.prototxt", 0.1f, 0);
+                "res/gridworld_solver.prototxt", 0);
 
         //run learning for 1000 episodes
         int maxTimeSteps = 100;
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 100; i++) {
             EpisodeAnalysis ea = agent.runLearningEpisodeFrom(initialState, maxTimeSteps);
 
             ea.writeToFile(String.format("%se%03d", outputPath, i), sp);

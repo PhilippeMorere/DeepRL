@@ -1,7 +1,7 @@
 package edu.h2r.learning.modelbased;
 
 import burlap.behavior.singleagent.learning.modellearning.Model;
-import burlap.behavior.statehashing.DiscreteStateHashFactory;
+import burlap.behavior.statehashing.StateHashFactory;
 import burlap.behavior.statehashing.StateHashTuple;
 import burlap.domain.singleagent.gridworld.GridWorldDomain;
 import burlap.oomdp.core.*;
@@ -11,19 +11,22 @@ import burlap.oomdp.singleagent.RewardFunction;
 import edu.h2r.jSolver;
 import edu.h2r.learning.modelbased.FeatureStateGenerator.FeatureState;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by philippe on 18/02/15.
  */
 public class DeepNNModel extends Model {
 
+    /**
+     * Names of the output/data/label layers of the transition function neural network
+     */
+    private static final String outputTFLayerName = "output";
+    private static final String dataTFLayerName = "data";
+    private static final String labelTFLayerName = "label";
     protected Domain sourceDomain;
     protected List<Action> allActions;
-    protected DiscreteStateHashFactory hashingFactory;
+    protected StateHashFactory hashingFactory;
     /**
      * The set of states marked as terminal states.
      */
@@ -32,28 +35,18 @@ public class DeepNNModel extends Model {
      * The modeled terminal funciton.
      */
     protected TerminalFunction modeledTF;
-
     /**
      * The modeled reward function.
      */
     protected RewardFunction modeledRF;
-
     /**
      * The maximum reward to be given when the transition/state is unknown
      */
     protected double rmax;
-
     /**
      * The neural network used to model the transition function
      */
     protected jSolver netTF;
-
-    /**
-     * Names of the output/data/label layers of the transition function neural network
-     */
-    private static final String outputTFLayerName = "output";
-    private static final String dataTFLayerName = "data";
-    private static final String labelTFLayerName = "label";
 
     /**
      * @param sourceDomain
@@ -61,11 +54,11 @@ public class DeepNNModel extends Model {
      * @param rmax
      */
 
-    public DeepNNModel(Domain sourceDomain, String solverFile, int featureNumber, double rmax) {
+    public DeepNNModel(Domain sourceDomain, String solverFile, int featureNumber, StateHashFactory hashingFactory, double rmax) {
         this.sourceDomain = sourceDomain;
         this.allActions = sourceDomain.getActions();
         this.rmax = rmax;
-        this.hashingFactory = new DiscreteStateHashFactory();
+        this.hashingFactory = hashingFactory;
         this.terminalStates = new HashSet<StateHashTuple>();
 
         // Edit the net file
@@ -73,21 +66,29 @@ public class DeepNNModel extends Model {
 
         // Init the net
         netTF = new jSolver(solverFile);
-        netTF.getNet().setMemoryDataLayer(dataTFLayerName, new float[featureNumber + allActions.size()]);
-        netTF.getNet().setMemoryDataLayer(labelTFLayerName, new float[featureNumber]);
+        float[] inputOnes = new float[featureNumber + allActions.size()];
+        for (int i = 0; i < featureNumber + allActions.size(); i++)
+            inputOnes[i] = 1;
+        float[] labelOnes = new float[featureNumber];
+        for (int i = 0; i < featureNumber; i++)
+            labelOnes[i] = 1;
+        netTF.getNet().setMemoryDataLayer(dataTFLayerName, inputOnes);
+        netTF.getNet().setMemoryDataLayer(labelTFLayerName, labelOnes);
+        float[] fisrt = netTF.getNet().forwardTo(inputOnes, "output");
+        System.out.println(Arrays.toString(fisrt));
 
         // Defining the terminal and the reward functions
         this.modeledTF = new TerminalFunction() {
 
             public boolean isTerminal(State s) {
-                return terminalStates.contains(hashingFactory.hashState(s));
+                return terminalStates.contains(DeepNNModel.this.hashingFactory.hashState(s));
             }
         };
 
         this.modeledRF = new RewardFunction() {
 
             public double reward(State s, GroundedAction a, State sprime) {
-                StateHashTuple sh = hashingFactory.hashState(s);
+                StateHashTuple sh = DeepNNModel.this.hashingFactory.hashState(s);
                 // TODO: Have a 2nd neural network to model the reward function.
                 return DeepNNModel.this.rmax;
             }
@@ -102,7 +103,9 @@ public class DeepNNModel extends Model {
         FeatureStateGenerator fsg = new FeatureStateGenerator(new MockGWStateToFeatureVectorGenerator(d));
         State s = fsg.fromState(skbdg.getOneAgentOneLocationState(d));
 
-        DeepNNModel model = new DeepNNModel(d, "res/gridworld_solver.prototxt", 20, 10);
+        StateHashFactory hashingFactory = new FeatureStateHashFactory();
+
+        DeepNNModel model = new DeepNNModel(d, "res/gridworld_solver.prototxt", fsg.fromState(s).features.length, hashingFactory, 10);
 
         // Try it out
         List<Action> actions = d.getActions();
@@ -165,14 +168,22 @@ public class DeepNNModel extends Model {
         float[] netInput = netInputFromStateAction(s, ga);
         float[] netOutput = netTF.getNet().forwardTo(netInput, outputTFLayerName);
 
+        //System.out.println(Arrays.toString(netOutput));
         // Construct the new state from the old one and the new features
         FeatureState newState = (FeatureState) s.copy();
-        newState.features = netOutput;
+        newState.features = featuresFromNetOutput(netOutput);
 
         // Return a list of transition probabilities containing only the predicted new state
         List<TransitionProbability> probs = new ArrayList<TransitionProbability>();
         probs.add(new TransitionProbability(newState, 1));
         return probs;
+    }
+
+    private float[] featuresFromNetOutput(float[] netOutput) {
+        float[] features = new float[netOutput.length];
+        for (int i = 0; i < netOutput.length; i++)
+            features[i] = Math.round(netOutput[i]);
+        return features;
     }
 
     private float[] netInputFromStateAction(State s, GroundedAction ga) {
@@ -185,7 +196,7 @@ public class DeepNNModel extends Model {
 
         // At the end of the new array, add a 1 for the selected action and 0s for the other ones
         for (int i = 0; i < allActions.size(); i++)
-            netInput[i + stateFeatures.length] = ga.actionName().equals(allActions.get(i)) ? 1 : 0;
+            netInput[i + stateFeatures.length] = ga.actionName().equals(allActions.get(i).getName()) ? 1 : 0.5f;
         return netInput;
     }
 
@@ -200,9 +211,11 @@ public class DeepNNModel extends Model {
         // Set the net's input data and label
         netTF.getNet().setMemoryDataLayer("data", netInputFromStateAction(s, ga));
         netTF.getNet().setMemoryDataLayer("label", ((FeatureState) sprime).features);
+        //System.out.println("Data: " + Arrays.toString(netInputFromStateAction(s, ga)));
+        //System.out.println("Label: " + Arrays.toString(((FeatureState) sprime).features));
 
         // Run forward & backward pass to train the net
-        netTF.train();
+        netTF.trainOneStep();
     }
 
     @Override

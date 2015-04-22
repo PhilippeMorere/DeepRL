@@ -9,7 +9,7 @@ layer {
       width: 24
   }
   top: "data"
-  top: "discarded_label1"
+  top: "discarded1"
 }
 layer {
   name: "label"
@@ -21,7 +21,7 @@ layer {
       width: 20
   }
   top: "label"
-  top: "discarded_label2"
+  top: "discarded2"
 }
 layer {
   name: "ip1"
@@ -47,7 +47,7 @@ layer {
 }
 layer {
   name: "relu1"
-  type: "ReLU"
+  type: "Sigmoid"
   bottom: "ip1"
   top: "ip1"
 }
@@ -75,7 +75,7 @@ layer {
 }
 layer {
   name: "output"
-  type: "ReLU"
+  type: "Sigmoid"
   bottom: "ip2"
   top: "ip2"
 }

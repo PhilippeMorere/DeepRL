@@ -12,7 +12,6 @@ import burlap.behavior.singleagent.planning.QComputablePlanner;
 import burlap.behavior.singleagent.planning.ValueFunctionPlanner;
 import burlap.behavior.singleagent.planning.commonpolicies.GreedyQPolicy;
 import burlap.behavior.statehashing.StateHashFactory;
-import burlap.domain.singleagent.gridworld.GridWorldDomain;
 import burlap.oomdp.core.AbstractGroundedAction;
 import burlap.oomdp.core.Domain;
 import burlap.oomdp.core.State;
@@ -69,12 +68,12 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
 
 
     public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
-                            State initState, String modelFile, float scalingFactor, double rmax) {
+                            State initState, String modelFile, double rmax) {
         this.plannerInit(domain, rf, tf, gamma, hashingFactory);
         this.fsg = new FeatureStateGenerator(new MockGWStateToFeatureVectorGenerator(domain));
 
         // Create the model and modeled domain
-        this.model = new DeepNNModel(domain, modelFile, this.fsg.fromState(initState).features.length, rmax);
+        this.model = new DeepNNModel(domain, modelFile, this.fsg.fromState(initState).features.length, hashingFactory, rmax);
         ModeledDomainGenerator mdg = new ModeledDomainGenerator(domain, this.model, true);
         this.modeledDomain = mdg.generateDomain();
 
