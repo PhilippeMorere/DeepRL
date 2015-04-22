@@ -3,7 +3,6 @@ package edu.h2r.learning.modelbased;
 import burlap.behavior.statehashing.StateHashFactory;
 import burlap.behavior.statehashing.StateHashTuple;
 import burlap.oomdp.core.State;
-import edu.h2r.learning.modelbased.FeatureStateGenerator.FeatureState;
 
 /**
  * Created by philippe on 22/04/15.

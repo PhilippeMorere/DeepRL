@@ -9,7 +9,6 @@ import burlap.oomdp.singleagent.Action;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.RewardFunction;
 import edu.h2r.jSolver;
-import edu.h2r.learning.modelbased.FeatureStateGenerator.FeatureState;
 
 import java.util.*;
 
