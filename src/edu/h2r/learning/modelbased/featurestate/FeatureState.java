@@ -3,6 +3,8 @@ package edu.h2r.learning.modelbased.featurestate;
 import burlap.oomdp.core.State;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by philippe on 22/04/15.
@@ -33,12 +35,9 @@ public class FeatureState extends State {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
 
         FeatureState that = (FeatureState) o;
-
         return Arrays.equals(features, that.features);
-
     }
 
     @Override
