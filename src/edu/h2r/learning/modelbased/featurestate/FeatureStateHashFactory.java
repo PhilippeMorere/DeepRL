@@ -1,4 +1,4 @@
-package edu.h2r.learning.modelbased;
+package edu.h2r.learning.modelbased.featurestate;
 
 import burlap.behavior.statehashing.StateHashFactory;
 import burlap.behavior.statehashing.StateHashTuple;

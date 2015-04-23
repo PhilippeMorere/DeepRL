@@ -1,4 +1,4 @@
-package edu.h2r.learning.modelbased;
+package edu.h2r.learning.modelbased.featurestate;
 
 import burlap.oomdp.core.State;
 
@@ -8,7 +8,7 @@ import java.util.Arrays;
  * Created by philippe on 22/04/15.
  */
 public class FeatureState extends State {
-    protected float[] features;
+    public float[] features;
 
 
     public FeatureState(State s, double[] features) {

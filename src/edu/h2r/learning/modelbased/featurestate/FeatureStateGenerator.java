@@ -1,4 +1,4 @@
-package edu.h2r.learning.modelbased;
+package edu.h2r.learning.modelbased.featurestate;
 
 import burlap.behavior.singleagent.vfa.StateToFeatureVectorGenerator;
 import burlap.oomdp.core.State;
