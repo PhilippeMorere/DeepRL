@@ -3,7 +3,7 @@ layer {
   name: "data"
   type: "MemoryData"
   memory_data_param {
-      batch_size: 1
+      batch_size: 80
       channels: 1
       height: 1
       width: 24
@@ -15,7 +15,7 @@ layer {
   name: "label"
   type: "MemoryData"
   memory_data_param {
-      batch_size: 1
+      batch_size: 80
       channels: 1
       height: 1
       width: 20
@@ -35,7 +35,7 @@ layer {
     lr_mult: 2
   }
   inner_product_param {
-    num_output: 24
+    num_output: 120
     weight_filler {
       type: "xavier"
     }
