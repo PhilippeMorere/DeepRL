@@ -22,6 +22,7 @@ public class FeatureStateHashFactory implements StateHashFactory {
          */
         public FeatureStateHashTuple(State s) {
             super(s);
+            computeHashCode();
         }
 
         @Override

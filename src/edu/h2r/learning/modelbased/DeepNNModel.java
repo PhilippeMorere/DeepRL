@@ -9,6 +9,9 @@ import burlap.oomdp.singleagent.Action;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.RewardFunction;
 import edu.h2r.jSolver;
+import edu.h2r.learning.modelbased.featurestate.FeatureState;
+import edu.h2r.learning.modelbased.featurestate.FeatureStateGenerator;
+import edu.h2r.learning.modelbased.featurestate.FeatureStateHashFactory;
 
 import java.util.*;
 
@@ -23,8 +26,9 @@ public class DeepNNModel extends Model {
     private static final String outputTFLayerName = "output";
     private static final String dataTFLayerName = "data";
     private static final String labelTFLayerName = "label";
+    protected static List<Action> allActions;
+    private final int batchSize;
     protected Domain sourceDomain;
-    protected List<Action> allActions;
     protected StateHashFactory hashingFactory;
     /**
      * The set of states marked as terminal states.
@@ -46,6 +50,8 @@ public class DeepNNModel extends Model {
      * The neural network used to model the transition function
      */
     protected jSolver netTF;
+    private boolean debug = false;
+    private Transitions transitionMemory;
 
     /**
      * @param sourceDomain
@@ -59,22 +65,21 @@ public class DeepNNModel extends Model {
         this.rmax = rmax;
         this.hashingFactory = hashingFactory;
         this.terminalStates = new HashSet<StateHashTuple>();
+        this.batchSize = 10;
+        this.transitionMemory = new Transitions();
 
         // Edit the net file
         // TODO: Modify the net file so that the net size is <featureNumber>
+        // TODO: Same thing for the batch size
 
         // Init the net
         netTF = new jSolver(solverFile);
-        float[] inputOnes = new float[featureNumber + allActions.size()];
-        for (int i = 0; i < featureNumber + allActions.size(); i++)
-            inputOnes[i] = 1;
-        float[] labelOnes = new float[featureNumber];
-        for (int i = 0; i < featureNumber; i++)
-            labelOnes[i] = 1;
-        netTF.getNet().setMemoryDataLayer(dataTFLayerName, inputOnes);
-        netTF.getNet().setMemoryDataLayer(labelTFLayerName, labelOnes);
-        float[] fisrt = netTF.getNet().forwardTo(inputOnes, "output");
-        System.out.println(Arrays.toString(fisrt));
+        netTF.setLogLevel(1);
+        float[] input = new float[batchSize * (featureNumber + allActions.size())];
+        float[] label = new float[batchSize * featureNumber];
+        netTF.getNet().setMemoryDataLayer(dataTFLayerName, input, batchSize);
+        netTF.getNet().setMemoryDataLayer(labelTFLayerName, label, batchSize);
+        netTF.getNet().forwardTo(input, "output");
 
         // Defining the terminal and the reward functions
         this.modeledTF = new TerminalFunction() {
@@ -85,7 +90,6 @@ public class DeepNNModel extends Model {
         };
 
         this.modeledRF = new RewardFunction() {
-
             public double reward(State s, GroundedAction a, State sprime) {
                 StateHashTuple sh = DeepNNModel.this.hashingFactory.hashState(s);
                 // TODO: Have a 2nd neural network to model the reward function.
@@ -121,6 +125,19 @@ public class DeepNNModel extends Model {
             model.updateModel(s, ga, sp, -0.1, false);
             s = sp;
         }
+    }
+
+    public static float[] netInputFromStateAction(float[] stateFeatures, GroundedAction ga) {
+        float[] netInput = new float[stateFeatures.length + allActions.size()];
+
+        // Copy the features into the new array
+        for (int i = 0; i < stateFeatures.length; i++)
+            netInput[i] = stateFeatures[i];
+
+        // At the end of the new array, add a 1 for the selected action and 0s for the other ones
+        for (int i = 0; i < allActions.size(); i++)
+            netInput[i + stateFeatures.length] = ga.actionName().equals(allActions.get(i).getName()) ? 1 : 0f;
+        return netInput;
     }
 
     @Override
@@ -164,13 +181,36 @@ public class DeepNNModel extends Model {
     @Override
     public List<TransitionProbability> getTransitionProbabilities(State s, GroundedAction ga) {
         // Run a forward pass through the net to predict the next state
-        float[] netInput = netInputFromStateAction(s, ga);
-        float[] netOutput = netTF.getNet().forwardTo(netInput, outputTFLayerName);
+        float[] netInput = netInputFromStateAction(((FeatureState) s).features, ga);
+        float[] netOutput = netTF.getNet().forwardTo(fitBatchSize(netInput), outputTFLayerName);
 
         //System.out.println(Arrays.toString(netOutput));
         // Construct the new state from the old one and the new features
         FeatureState newState = (FeatureState) s.copy();
-        newState.features = featuresFromNetOutput(netOutput);
+        newState.features = featuresFromNetOutput(netOutput, newState.features.length);
+
+        //TODO: Delete overriding the neural net
+        /*int x = s.getFirstObjectOfClass(GridWorldDomain.CLASSAGENT).getDiscValForAttribute(GridWorldDomain.ATTX);
+        int y = s.getFirstObjectOfClass(GridWorldDomain.CLASSAGENT).getDiscValForAttribute(GridWorldDomain.ATTY);
+        int newX = x;
+        int newY = y;
+        if (ga.actionName().equals(GridWorldDomain.ACTIONEAST)) {
+            if (x + 1 < 10)
+                newX = x + 1;
+        } else if (ga.actionName().equals(GridWorldDomain.ACTIONWEST)) {
+            if (x - 1 >= 0)
+                newX = x - 1;
+        } else if (ga.actionName().equals(GridWorldDomain.ACTIONNORTH)) {
+            if (y + 1 < 2)
+                newY = y + 1;
+        } else if (ga.actionName().equals(GridWorldDomain.ACTIONSOUTH))
+            if (y - 1 >= 0)
+                newY = y - 1;
+
+        //agent.setValue(GridWorldDomain.ATTX, newX);
+        //agent.setValue(GridWorldDomain.ATTY, newY);
+        newState.features = new float[20];
+        newState.features[newX + 10 * newY] = 1;*/
 
         // Return a list of transition probabilities containing only the predicted new state
         List<TransitionProbability> probs = new ArrayList<TransitionProbability>();
@@ -178,25 +218,21 @@ public class DeepNNModel extends Model {
         return probs;
     }
 
-    private float[] featuresFromNetOutput(float[] netOutput) {
-        float[] features = new float[netOutput.length];
-        for (int i = 0; i < netOutput.length; i++)
-            features[i] = Math.round(netOutput[i]);
-        return features;
+    private float[] fitBatchSize(float[] input) {
+        float[] fullInput = new float[input.length * batchSize];
+        for (int i = 0; i < fullInput.length; i++)
+            fullInput[i] = input[i % input.length];
+        return fullInput;
     }
 
-    private float[] netInputFromStateAction(State s, GroundedAction ga) {
-        float[] stateFeatures = ((FeatureState) s).features;
-        float[] netInput = new float[stateFeatures.length + allActions.size()];
-
-        // Copy the features into the new array
-        for (int i = 0; i < stateFeatures.length; i++)
-            netInput[i] = stateFeatures[i];
-
-        // At the end of the new array, add a 1 for the selected action and 0s for the other ones
-        for (int i = 0; i < allActions.size(); i++)
-            netInput[i + stateFeatures.length] = ga.actionName().equals(allActions.get(i).getName()) ? 1 : 0.5f;
-        return netInput;
+    private float[] featuresFromNetOutput(float[] netOutput, int limit) {
+        int end = Math.min(netOutput.length, limit);
+        if (limit <= 0)
+            end = netOutput.length;
+        float[] features = new float[end];
+        for (int i = 0; i < end; i++)
+            features[i] = Math.round(netOutput[i]);
+        return features;
     }
 
     @Override
@@ -205,20 +241,40 @@ public class DeepNNModel extends Model {
         if (sprimeIsTerminal && !modeledTF.isTerminal(s))
             this.terminalStates.add(this.hashingFactory.hashState(s));
 
-        // TODO: Keep all experiences in memory to train the net with more data: experienceReplay
+        // Add experience to memory
+        transitionMemory.addTransition(s, ga, sprime, r);
 
-        // Set the net's input data and label
-        netTF.getNet().setMemoryDataLayer("data", netInputFromStateAction(s, ga));
-        netTF.getNet().setMemoryDataLayer("label", ((FeatureState) sprime).features);
-        //System.out.println("Data: " + Arrays.toString(netInputFromStateAction(s, ga)));
-        //System.out.println("Label: " + Arrays.toString(((FeatureState) sprime).features));
+        if (batchSize <= transitionMemory.getMemorySize()) {
+            // Get a batch from memory
+            Transitions.DataLabel dl = transitionMemory.getNTransitions(batchSize);
 
-        // Run forward & backward pass to train the net
-        netTF.trainOneStep();
+            // Set the net's input data and label
+            netTF.getNet().setMemoryDataLayer("data", dl.data, batchSize);
+            netTF.getNet().setMemoryDataLayer("label", dl.label, batchSize);
+
+            // Run forward & backward pass to train the net
+            netTF.trainOneStep();
+        }
+
+        if (debug) {
+            float[] netInput = netInputFromStateAction(((FeatureState) s).features, ga);
+            float[] netOutput = netTF.getNet().forwardTo(fitBatchSize(netInput), outputTFLayerName);
+            System.out.println("Expected: " + Arrays.toString(((FeatureState) sprime).features).replace(",", ","));
+            float[] print = new float[((FeatureState) s).features.length];
+            for (int i = 0; i < print.length; i++)
+                print[i] = netOutput[i];
+            System.out.println("Output:   " + Arrays.toString(print));
+        }
+
     }
 
     @Override
     public void resetModel() {
         netTF.reset();
+    }
+
+    public void setLogLevel(int level) {
+        netTF.setLogLevel(level);
+        debug = level == 0;
     }
 }

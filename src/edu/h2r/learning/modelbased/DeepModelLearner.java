@@ -12,6 +12,7 @@ import burlap.behavior.singleagent.planning.QComputablePlanner;
 import burlap.behavior.singleagent.planning.ValueFunctionPlanner;
 import burlap.behavior.singleagent.planning.commonpolicies.GreedyQPolicy;
 import burlap.behavior.statehashing.StateHashFactory;
+import burlap.behavior.statehashing.StateHashTuple;
 import burlap.oomdp.core.AbstractGroundedAction;
 import burlap.oomdp.core.Domain;
 import burlap.oomdp.core.State;
@@ -19,9 +20,10 @@ import burlap.oomdp.core.TerminalFunction;
 import burlap.oomdp.singleagent.Action;
 import burlap.oomdp.singleagent.GroundedAction;
 import burlap.oomdp.singleagent.RewardFunction;
+import edu.h2r.learning.modelbased.featurestate.FeatureState;
+import edu.h2r.learning.modelbased.featurestate.FeatureStateGenerator;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by philippe on 19/02/15.
@@ -66,6 +68,8 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
      */
     protected FeatureStateGenerator fsg;
 
+    private int totalSteps = 0;
+
 
     public DeepModelLearner(Domain domain, RewardFunction rf, TerminalFunction tf, double gamma, StateHashFactory hashingFactory,
                             State initState, String modelFile, double rmax) {
@@ -78,7 +82,7 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         this.modeledDomain = mdg.generateDomain();
 
         // Create the planer and the policy to use with it
-        this.planner = new NNMLPlanner(mdg.generateDomain(), this.model.getModelRF(), this.model.getModelTF(), gamma, hashingFactory, rmax);
+        this.planner = new NNMLPlanner(mdg.generateDomain(), rf, this.model.getModelTF(), gamma, hashingFactory, rmax);
         this.policy = new GreedyQPolicy(this);
     }
 
@@ -124,6 +128,14 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
             curState = nextState;
             ea.recordTransitionTo(ga, nextState, r);
             steps++;
+            totalSteps++;
+            if(totalSteps % 100 == 0){
+                ((DeepNNModel)this.model).setLogLevel(0);
+                //this.planner.resetPlannerResults();
+            }
+            if(totalSteps % 100 == 1)
+                ((DeepNNModel)this.model).setLogLevel(1);
+
         }
 
         // Add episodeAnalysis to history
@@ -249,6 +261,5 @@ public class DeepModelLearner extends OOMDPPlanner implements LearningAgent, QCo
         public void planFromState(State initialState) {
             throw new UnsupportedOperationException("This method should not be called for the inner ARTDP planner");
         }
-
     }
 }

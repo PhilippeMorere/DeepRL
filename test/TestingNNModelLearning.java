@@ -7,7 +7,6 @@ import burlap.behavior.singleagent.EpisodeSequenceVisualizer;
 import burlap.behavior.singleagent.learning.LearningAgent;
 import burlap.behavior.singleagent.planning.StateConditionTest;
 import burlap.behavior.singleagent.planning.deterministic.TFGoalCondition;
-import burlap.behavior.statehashing.DiscreteStateHashFactory;
 import burlap.behavior.statehashing.StateHashFactory;
 import burlap.domain.singleagent.gridworld.GridWorldDomain;
 import burlap.domain.singleagent.gridworld.GridWorldStateParser;
@@ -21,7 +20,7 @@ import burlap.oomdp.singleagent.common.SinglePFTF;
 import burlap.oomdp.singleagent.common.UniformCostRF;
 import burlap.oomdp.visualizer.Visualizer;
 import edu.h2r.learning.modelbased.DeepModelLearner;
-import edu.h2r.learning.modelbased.FeatureStateHashFactory;
+import edu.h2r.learning.modelbased.featurestate.FeatureStateHashFactory;
 
 public class TestingNNModelLearning {
     GridWorldDomain gwdg;
@@ -45,7 +44,7 @@ public class TestingNNModelLearning {
         example.DeepModelLearnerExample(outputPath);
 
         //run the visualizer
-        example.visualizeGridWorld(outputPath);
+        //example.visualizeGridWorld(outputPath);
     }
 
     public void testOnGridWorld() {
@@ -80,7 +79,7 @@ public class TestingNNModelLearning {
 
         //run learning for 1000 episodes
         int maxTimeSteps = 100;
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 400; i++) {
             EpisodeAnalysis ea = agent.runLearningEpisodeFrom(initialState, maxTimeSteps);
 
             ea.writeToFile(String.format("%se%03d", outputPath, i), sp);
